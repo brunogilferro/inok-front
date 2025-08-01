@@ -1,0 +1,24 @@
+{
+  "chat": {
+    "placeholder": "Escribe un mensaje...",
+    "send": "Enviar",
+    "user": "Tú",
+    "assistant": "Asistente",
+    "systemMessage": "Sistema",
+    "typing": "El asistente está escribiendo...",
+    "errorMessage": "Algo salió mal. Inténtalo de nuevo.",
+    "memorySaved": "Memoria guardada exitosamente",
+    "memoryCleared": "Memoria limpiada"
+  },
+  "language": {
+    "select": "Seleccionar idioma",
+    "english": "Inglés",
+    "portuguese": "Portugués",
+    "spanish": "Español"
+  },
+  "theme": {
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
+  }
+}

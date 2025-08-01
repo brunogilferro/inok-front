@@ -1,0 +1,24 @@
+{
+  "chat": {
+    "placeholder": "Type a message...",
+    "send": "Send",
+    "user": "You",
+    "assistant": "Assistant",
+    "systemMessage": "System",
+    "typing": "Assistant is typing...",
+    "errorMessage": "Something went wrong. Please try again.",
+    "memorySaved": "Memory saved successfully",
+    "memoryCleared": "Memory cleared"
+  },
+  "language": {
+    "select": "Select language",
+    "english": "English",
+    "portuguese": "Portuguese", 
+    "spanish": "Spanish"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  }
+}
