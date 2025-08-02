@@ -8,7 +8,9 @@
     "typing": "El asistente está escribiendo...",
     "errorMessage": "Algo salió mal. Inténtalo de nuevo.",
     "memorySaved": "Memoria guardada exitosamente",
-    "memoryCleared": "Memoria limpiada"
+    "memoryCleared": "Memoria limpiada",
+    "enterToSend": "Enter para enviar, Shift+Enter para nueva línea",
+    "tapToSend": "Toca enviar o usa Enter"
   },
   "language": {
     "select": "Seleccionar idioma",
@@ -19,6 +21,7 @@
   "theme": {
     "light": "Claro",
     "dark": "Oscuro",
-    "system": "Sistema"
+    "system": "Sistema",
+    "toggleTheme": "Cambiar tema"
   }
 }

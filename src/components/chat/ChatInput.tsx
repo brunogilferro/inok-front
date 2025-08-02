@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslation } from 'react-i18next';
 import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,12 +14,14 @@ interface ChatInputProps {
 }
 
 export default function ChatInput({ onSendMessage, disabled = false, className }: ChatInputProps) {
-  const t = useTranslations('chat');
+  const { t } = useTranslation();
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [mounted, setMounted] = useState(false);
 
   // Auto-resize textarea
   useEffect(() => {
+    setMounted(true);
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
@@ -53,7 +55,7 @@ export default function ChatInput({ onSendMessage, disabled = false, className }
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t('placeholder')}
+            placeholder={mounted ? t('chat.placeholder') : 'Type a message...'}
             disabled={disabled}
             className={cn(
               'min-h-[44px] max-h-[200px] resize-none border-0 bg-muted/50 focus:bg-muted/70 transition-colors',
@@ -74,14 +76,14 @@ export default function ChatInput({ onSendMessage, disabled = false, className }
           )}
         >
           <Send className="h-4 w-4" />
-          <span className="sr-only">{t('send')}</span>
+          <span className="sr-only">{mounted ? t('chat.send') : 'Send'}</span>
         </Button>
       </form>
       
       {/* Helper text */}
       <div className="mt-2 text-xs text-muted-foreground text-center">
-        <span className="hidden sm:inline">Enter to send, Shift+Enter for new line</span>
-        <span className="sm:hidden">Tap send or use Enter</span>
+        <span className="hidden sm:inline">{mounted ? t('chat.enterToSend') : 'Enter to send, Shift+Enter for new line'}</span>
+        <span className="sm:hidden">{mounted ? t('chat.tapToSend') : 'Tap send or use Enter'}</span>
       </div>
     </div>
   );

@@ -1,21 +1,21 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslation } from 'react-i18next';
 import { ChatMessage as ChatMessageType } from '@/types/chat';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
-import LanguageSelector from './LanguageSelector';
+import LanguageSelector from '../LanguageSelector';
 import ThemeToggle from './ThemeToggle';
 // import { cn } from '@/lib/utils'; // Commented out as it's not used in this component
 
 export default function ChatContainer() {
-  const t = useTranslations('chat');
-  const locale = useLocale();
+  const { t, i18n } = useTranslation();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // Detect dark mode
   useEffect(() => {
@@ -46,6 +46,7 @@ export default function ChatContainer() {
 
   // Initialize with a welcome message
   useEffect(() => {
+    setMounted(true);
     const welcomeMessage: ChatMessageType = {
       id: 'welcome',
       content: `# Welcome to INOK Memory! 🧠
@@ -96,7 +97,7 @@ Feel free to ask me anything. What would you like to explore today?`,
         },
         body: JSON.stringify({
           message: content,
-          locale: locale,
+          locale: i18n.language,
         }),
       });
 
@@ -121,7 +122,7 @@ Feel free to ask me anything. What would you like to explore today?`,
       // Show error message
       const errorMessage: ChatMessageType = {
         id: 'error-' + Date.now(),
-        content: t('errorMessage'),
+        content: mounted ? t('chat.errorMessage') : 'Something went wrong. Please try again.',
         role: 'system',
         timestamp: new Date(),
       };
@@ -135,23 +136,22 @@ Feel free to ask me anything. What would you like to explore today?`,
   return (
     <div className="flex h-full flex-col bg-background">
       {/* Header */}
-      <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center space-x-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
-              I
-            </div>
+      <header className="border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-semibold">INOK Memory</h1>
-              <p className="text-xs text-muted-foreground">AI Chat Interface</p>
+              <h1 className="text-2xl font-bold">INOK Memory</h1>
+              <p className="text-muted-foreground">
+                AI Chat Interface
+              </p>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <LanguageSelector />
+            <div className="flex items-center space-x-2">
+              <LanguageSelector />
+              <ThemeToggle />
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Messages */}
       <div className="flex-1 overflow-hidden">
@@ -160,7 +160,7 @@ Feel free to ask me anything. What would you like to explore today?`,
             {messages.length === 0 ? (
               <div className="flex h-full items-center justify-center p-8">
                 <div className="text-center text-muted-foreground">
-                  <p className="text-lg">{t('placeholder')}</p>
+                  <p className="text-lg">{mounted ? t('chat.placeholder') : 'Type a message...'}</p>
                   <p className="text-sm mt-2">Start a conversation by typing a message below.</p>
                 </div>
               </div>

@@ -8,7 +8,9 @@
     "typing": "Assistant is typing...",
     "errorMessage": "Something went wrong. Please try again.",
     "memorySaved": "Memory saved successfully",
-    "memoryCleared": "Memory cleared"
+    "memoryCleared": "Memory cleared",
+    "enterToSend": "Enter to send, Shift+Enter for new line",
+    "tapToSend": "Tap send or use Enter"
   },
   "language": {
     "select": "Select language",
@@ -19,6 +21,7 @@
   "theme": {
     "light": "Light",
     "dark": "Dark",
-    "system": "System"
+    "system": "System",
+    "toggleTheme": "Toggle theme"
   }
 }

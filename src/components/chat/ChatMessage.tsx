@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -14,7 +14,7 @@ interface ChatMessageProps {
 }
 
 export default function ChatMessage({ message, isDarkMode = false }: ChatMessageProps) {
-  const t = useTranslations('chat');
+  const { t } = useTranslation();
 
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
@@ -27,9 +27,9 @@ export default function ChatMessage({ message, isDarkMode = false }: ChatMessage
   };
 
   const getRoleLabel = () => {
-    if (isUser) return t('user');
-    if (isSystem) return t('systemMessage');
-    return t('assistant');
+    if (isUser) return t('chat.user');
+    if (isSystem) return t('chat.systemMessage');
+    return t('chat.assistant');
   };
 
   return (
@@ -78,7 +78,7 @@ export default function ChatMessage({ message, isDarkMode = false }: ChatMessage
         >
           {message.isTyping ? (
             <div className="flex items-center gap-1">
-              <span>{t('typing')}</span>
+              <span>{t('chat.typing')}</span>
               <div className="flex space-x-1">
                 <div className="h-1 w-1 animate-bounce rounded-full bg-current [animation-delay:-0.3s]"></div>
                 <div className="h-1 w-1 animate-bounce rounded-full bg-current [animation-delay:-0.15s]"></div>

@@ -1,24 +1,25 @@
 'use client';
 
+import { Moon, Sun, Monitor } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
-import { Sun, Moon, Monitor } from 'lucide-react';
-// import { Button } from '@/components/ui/button'; // Commented out as it's not used in this component
+import { useTranslation } from 'react-i18next';
+import { Button } from '../ui/button';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 
 type Theme = 'light' | 'dark' | 'system';
 
 export default function ThemeToggle() {
-  const t = useTranslations('theme');
+  const { t } = useTranslation();
   const [theme, setTheme] = useState<Theme>('system');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const savedTheme = localStorage.getItem('theme') as Theme;
     if (savedTheme) {
       setTheme(savedTheme);
@@ -51,45 +52,54 @@ export default function ThemeToggle() {
     }
   }, [theme]);
 
-  const getIcon = (themeName: Theme) => {
-    switch (themeName) {
-      case 'light':
-        return <Sun className="h-4 w-4" />;
-      case 'dark':
-        return <Moon className="h-4 w-4" />;
-      case 'system':
-        return <Monitor className="h-4 w-4" />;
-    }
-  };
+  // Prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800">
+        <Sun className="h-[1.2rem] w-[1.2rem]" />
+        <span className="sr-only">Toggle theme</span>
+      </Button>
+    );
+  }
 
   return (
-    <div className="flex items-center space-x-2">
-      {getIcon(theme)}
-      <Select value={theme} onValueChange={(value: Theme) => setTheme(value)}>
-        <SelectTrigger className="w-24">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="light">
-            <div className="flex items-center gap-2">
-              <Sun className="h-4 w-4" />
-              {t('light')}
-            </div>
-          </SelectItem>
-          <SelectItem value="dark">
-            <div className="flex items-center gap-2">
-              <Moon className="h-4 w-4" />
-              {t('dark')}
-            </div>
-          </SelectItem>
-          <SelectItem value="system">
-            <div className="flex items-center gap-2">
-              <Monitor className="h-4 w-4" />
-              {t('system')}
-            </div>
-          </SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800">
+          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="sr-only">{t('theme.toggleTheme')}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={() => setTheme('light')}
+          className={`hover:bg-gray-100 dark:hover:bg-gray-700 ${
+            theme === 'light' ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+          }`}
+        >
+          <Sun className="mr-2 h-4 w-4" />
+          <span>{t('theme.light')}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setTheme('dark')}
+          className={`hover:bg-gray-100 dark:hover:bg-gray-700 ${
+            theme === 'dark' ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+          }`}
+        >
+          <Moon className="mr-2 h-4 w-4" />
+          <span>{t('theme.dark')}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setTheme('system')}
+          className={`hover:bg-gray-100 dark:hover:bg-gray-700 ${
+            theme === 'system' ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+          }`}
+        >
+          <Monitor className="mr-2 h-4 w-4" />
+          <span>{t('theme.system')}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

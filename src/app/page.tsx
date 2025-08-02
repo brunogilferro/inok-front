@@ -1,9 +1,12 @@
+'use client';
+
 import ChatContainer from '@/components/chat/ChatContainer';
+import I18nProvider from '@/components/I18nProvider';
 
 export default function ChatPage() {
   return (
-    <div className="h-full">
+    <I18nProvider>
       <ChatContainer />
-    </div>
+    </I18nProvider>
   );
 }
