@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { I18nProvider } from '@/components/I18nProvider';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "INOK Memory - AI Chat Interface",
-  description: "Clean, minimalist chat interface for the INOK Memory system",
+  title: "INOK Admin Panel - Sistema de Gestão",
+  description: "Painel administrativo para o sistema INOK - Gestão de identidades, conversas, agentes e muito mais",
 };
 
 export default function RootLayout({
@@ -15,9 +18,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.className} h-full bg-background text-foreground`}>
-        {children}
+    <html lang="pt-BR" className="h-full">
+      <body className={`${inter.className} h-full bg-background text-foreground antialiased`}>
+        <I18nProvider>
+          <AuthProvider>
+            {children}
+            <Toaster
+              position="top-right"
+              richColors
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
+                  color: 'hsl(var(--foreground))',
+                },
+              }}
+            />
+          </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   );
