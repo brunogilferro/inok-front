@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className="h-full">
-      <body className={`${inter.className} h-full bg-background text-foreground antialiased`}>
+      <body className={`${inter.className} h-full antialiased`}>
         <I18nProvider>
           <AuthProvider>
             {children}
@@ -28,11 +28,6 @@ export default function RootLayout({
               richColors
               toastOptions={{
                 duration: 4000,
-                style: {
-                  background: 'hsl(var(--background))',
-                  border: '1px solid hsl(var(--border))',
-                  color: 'hsl(var(--foreground))',
-                },
               }}
             />
           </AuthProvider>

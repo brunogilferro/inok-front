@@ -5,3 +5,4 @@ export { default as AgentsView } from './AgentsView';
 export { default as DatabasesView } from './DatabasesView';
 export { default as MemoriesView } from './MemoriesView';
 export { default as DataFlowsView } from './DataFlowsView';
+export { default as UsersView } from './UsersView';

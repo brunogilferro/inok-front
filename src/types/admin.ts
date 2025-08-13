@@ -3,6 +3,7 @@ export interface Identity {
   id: number;
   name: string;
   type: 'human' | 'ai' | 'agent';
+  description?: string;
   metadata: Record<string, unknown>;
   avatar?: string;
   status: 'active' | 'inactive' | 'suspended';
@@ -11,13 +12,22 @@ export interface Identity {
 }
 
 // Conversation types
+export interface ConversationParticipant {
+  id: number;
+  conversationId: number;
+  identityId: number;
+  createdAt: string;
+  updatedAt: string;
+  identity: Identity;
+}
+
 export interface Conversation {
   id: number;
   title: string;
-  participants: number[];
   context: string;
-  narrative: string;
-  status: 'active' | 'paused' | 'archived' | 'deleted';
+  narrative?: string;
+  status: 'active' | 'archived' | 'processing';
+  conversationParticipants: ConversationParticipant[];
   createdAt: string;
   updatedAt: string;
 }
@@ -27,16 +37,28 @@ export interface TranscriptEntry {
   conversationId: number;
   speakerId: number;
   content: string;
+  confidence?: number;
   timestamp: string;
-  metadata: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Summary {
   id: number;
   conversationId: number;
-  type: 'automatic' | 'manual';
+  type: 'conversation' | 'topic' | 'action_items';
   content: string;
-  keyPoints: string[];
+  keyPoints?: string[];
+  aiGenerated?: boolean;
+  timestamp: string;
+}
+
+export interface Knowledge {
+  id: number;
+  conversationId: number;
+  content: string;
+  type: string;
+  tags?: string[];
+  confidence?: number;
   timestamp: string;
 }
 
@@ -44,12 +66,9 @@ export interface Summary {
 export interface Agent {
   id: number;
   name: string;
-  description: string;
-  model: string;
+  type: 'llm' | 'custom' | 'integration';
+  status: 'active' | 'inactive' | 'error';
   parameters: Record<string, unknown>;
-  systemPrompt: string;
-  tools: string[];
-  status: 'active' | 'inactive' | 'training';
   createdAt: string;
   updatedAt: string;
 }
@@ -59,13 +78,14 @@ export interface DatabaseConnection {
   id: number;
   name: string;
   type: 'postgresql' | 'mysql' | 'mongodb' | 'redis' | 'elasticsearch';
-  host: string;
-  port: number;
-  database: string;
-  username: string;
+  connectionString?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  username?: string;
   status: 'connected' | 'disconnected' | 'error';
-  lastCheck: string;
-  metadata: Record<string, unknown>;
+  lastCheck?: string;
+  metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -75,12 +95,12 @@ export interface Memory {
   id: number;
   name: string;
   description: string;
-  type: 'vector' | 'graph' | 'document';
-  provider: string;
-  configuration: Record<string, unknown>;
+  type: 'vector' | 'graph' | 'document' | 'rag';
+  provider?: string;
+  configuration?: Record<string, unknown>;
   status: 'active' | 'inactive' | 'indexing';
   documentsCount: number;
-  lastIndexed: string;
+  lastIndexed?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -90,16 +110,17 @@ export interface DataFlow {
   id: number;
   name: string;
   description: string;
-  source: string;
-  destination: string;
-  transformations: Array<{
+  type: 'etl' | 'stream' | 'batch';
+  source?: string;
+  destination?: string;
+  transformations?: Array<{
     type: string;
     config: Record<string, unknown>;
   }>;
-  schedule: string;
+  schedule?: string;
   status: 'active' | 'inactive' | 'running' | 'error';
-  lastRun: string;
-  nextRun: string;
+  lastRun?: string;
+  nextRun?: string;
   createdAt: string;
   updatedAt: string;
 }
