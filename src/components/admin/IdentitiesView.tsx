@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, User, Bot, Users, Search, Filter, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Edit, Trash2, User, Bot, Users, Search, RefreshCw } from 'lucide-react';
 import { identitiesAPI } from '@/lib/api-client';
 import { toast } from 'sonner';
+import Image from 'next/image';
 
 interface Identity {
   id: number;
   name: string;
   type: 'human' | 'ai' | 'agent';
-  description?: string;
   avatar?: string;
-  metadata?: Record<string, any>;
+  status: 'active' | 'inactive' | 'suspended';
+  metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,9 +20,9 @@ interface Identity {
 interface IdentityFormData {
   name: string;
   type: 'human' | 'ai' | 'agent';
-  description: string;
-  avatar?: string;
-  metadata: Record<string, any>;
+  avatar: string;
+  status: 'active' | 'inactive' | 'suspended';
+  metadata: Record<string, unknown>;
 }
 
 export default function IdentitiesView() {
@@ -34,13 +35,13 @@ export default function IdentitiesView() {
   const [showForm, setShowForm] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState<Identity | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'human' | 'ai' | 'agent'>('all');
   
   const [formData, setFormData] = useState<IdentityFormData>({
     name: '',
     type: 'human',
-    description: '',
     avatar: '',
+    status: 'active',
     metadata: {},
   });
 
@@ -51,19 +52,19 @@ export default function IdentitiesView() {
     lastPage: 1,
   });
 
-  // Load identities
-  const loadIdentities = async (page = 1, search = '', type = 'all') => {
+  // Load identities from API
+  const loadIdentities = useCallback(async (page = 1, search = '', type = 'all') => {
     try {
       setLoading(true);
-      const params: any = { page, limit: pagination.perPage };
+      const params: Record<string, string | number> = { page, limit: pagination.perPage };
       
       if (search) params.name = search;
-      if (type !== 'all') params.type = type;
+      if (type && type !== 'all') params.type = type;
 
       const response = await identitiesAPI.getAll(params);
       
       if (response.success && response.data) {
-        setIdentities(response.data);
+        setIdentities(response.data as Identity[]);
         if (response.meta) {
           setPagination({
             currentPage: response.meta.currentPage,
@@ -73,26 +74,27 @@ export default function IdentitiesView() {
           });
         }
       }
-    } catch (error: any) {
-      toast.error('Erro ao carregar identidades: ' + error.message);
+    } catch (error) {
+      console.error('Error loading identities:', error);
+      toast.error('Erro ao carregar identidades');
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.perPage]);
 
   // Initial load
   useEffect(() => {
     loadIdentities();
-  }, []);
+  }, [loadIdentities]);
 
-  // Handle search and filters
+  // Handle search and filter changes
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       loadIdentities(1, searchQuery, typeFilter);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, typeFilter]);
+  }, [searchQuery, typeFilter, loadIdentities]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,12 +104,12 @@ export default function IdentitiesView() {
       return;
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: formData.name.trim(),
       type: formData.type,
-      description: formData.description.trim(),
       avatar: formData.avatar || null,
-      metadata: Object.keys(formData.metadata).length > 0 ? formData.metadata : {},
+      status: formData.status,
+      metadata: formData.metadata,
     };
 
     try {
@@ -117,10 +119,10 @@ export default function IdentitiesView() {
         
         if (response.success) {
           toast.success('Identidade atualizada com sucesso!');
-          setIdentities(prev => prev.map(item => 
-            item.id === editingIdentity.id 
-              ? { ...item, ...payload, updatedAt: new Date().toISOString() }
-              : item
+          setIdentities(prev => prev.map(identity => 
+            identity.id === editingIdentity.id 
+              ? { ...identity, ...payload, updatedAt: new Date().toISOString() }
+              : identity
           ));
         }
       } else {
@@ -134,7 +136,8 @@ export default function IdentitiesView() {
       }
       
       resetForm();
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Error submitting identity:', error);
       toast.error(editingIdentity ? 'Erro ao atualizar identidade' : 'Erro ao criar identidade');
     } finally {
       setCreating(false);
@@ -147,15 +150,15 @@ export default function IdentitiesView() {
     setFormData({
       name: identity.name,
       type: identity.type,
-      description: identity.description || '',
       avatar: identity.avatar || '',
+      status: identity.status,
       metadata: identity.metadata || {},
     });
     setShowForm(true);
   };
 
   const handleDelete = async (identity: Identity) => {
-    if (!confirm(`Tem certeza que deseja excluir "${identity.name}"?`)) {
+    if (!confirm(`Tem certeza que deseja excluir a identidade "${identity.name}"?`)) {
       return;
     }
 
@@ -165,15 +168,16 @@ export default function IdentitiesView() {
       
       if (response.success) {
         toast.success('Identidade excluída com sucesso!');
-        setIdentities(prev => prev.filter(item => item.id !== identity.id));
+        setIdentities(prev => prev.filter(i => i.id !== identity.id));
         
         // If current page becomes empty and it's not the first page, go to previous page
         if (identities.length === 1 && pagination.currentPage > 1) {
           loadIdentities(pagination.currentPage - 1, searchQuery, typeFilter);
         }
       }
-    } catch (error: any) {
-      toast.error('Erro ao excluir identidade: ' + error.message);
+    } catch (error) {
+      console.error('Error deleting identity:', error);
+      toast.error('Erro ao excluir identidade');
     } finally {
       setDeleting(null);
     }
@@ -185,46 +189,65 @@ export default function IdentitiesView() {
     setFormData({
       name: '',
       type: 'human',
-      description: '',
       avatar: '',
+      status: 'active',
       metadata: {},
     });
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'human':
-        return <User className="h-5 w-5 text-blue-600" />;
-      case 'ai':
-        return <Bot className="h-5 w-5 text-green-600" />;
-      case 'agent':
-        return <Users className="h-5 w-5 text-purple-600" />;
-      default:
-        return <User className="h-5 w-5 text-gray-600" />;
+      case 'human': return User;
+      case 'ai': return Bot;
+      case 'agent': return Users;
+      default: return User;
     }
   };
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case 'human':
-        return 'Humano';
-      case 'ai':
-        return 'IA';
-      case 'agent':
-        return 'Agente';
-      default:
-        return type;
+      case 'human': return 'Humano';
+      case 'ai': return 'IA';
+      case 'agent': return 'Agente';
+      default: return type;
     }
   };
 
-  const addMetadataField = () => {
-    const key = prompt('Nome do campo:');
-    if (key && !formData.metadata[key]) {
-      setFormData(prev => ({
-        ...prev,
-        metadata: { ...prev.metadata, [key]: '' }
-      }));
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'human': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
+      case 'ai': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400';
+      case 'agent': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
     }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+      case 'inactive': return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
+      case 'suspended': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
+    }
+  };
+
+  // Helper functions for metadata management
+  const addMetadataField = () => {
+    setFormData(prev => ({
+      ...prev,
+      metadata: { ...prev.metadata, '': '' }
+    }));
+  };
+
+  const updateMetadataField = (oldKey: string, newKey: string, value: string) => {
+    setFormData(prev => {
+      const newMetadata = { ...prev.metadata };
+      if (oldKey !== newKey) {
+        delete newMetadata[oldKey];
+      }
+      newMetadata[newKey] = value;
+      return { ...prev, metadata: newMetadata };
+    });
   };
 
   const removeMetadataField = (key: string) => {
@@ -235,20 +258,13 @@ export default function IdentitiesView() {
     });
   };
 
-  const updateMetadataField = (key: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      metadata: { ...prev.metadata, [key]: value }
-    }));
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Identidades</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gerencie agentes, humanos e AIs do sistema</p>
+          <p className="text-gray-600 dark:text-gray-400">Gerencie identidades, agentes e usuários do sistema</p>
         </div>
         
         <div className="flex items-center space-x-3">
@@ -273,31 +289,29 @@ export default function IdentitiesView() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <input
-              type="text"
-              placeholder="Pesquisar por nome..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            />
-          </div>
+        {/* Search */}
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <input
+            type="text"
+            placeholder="Pesquisar por nome..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          />
         </div>
-        
-        <div className="sm:w-48">
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-          >
-            <option value="all">Todos os tipos</option>
-            <option value="human">Humano</option>
-            <option value="ai">IA</option>
-            <option value="agent">Agente</option>
-          </select>
-        </div>
+
+        {/* Type Filter */}
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as 'all' | 'human' | 'ai' | 'agent')}
+          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+        >
+          <option value="all">Todos os tipos</option>
+          <option value="human">Humanos</option>
+          <option value="ai">IAs</option>
+          <option value="agent">Agentes</option>
+        </select>
       </div>
 
       {/* Form Modal */}
@@ -323,14 +337,14 @@ export default function IdentitiesView() {
                     disabled={creating || updating}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Tipo *
                   </label>
                   <select
                     value={formData.type}
-                    onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as 'human' | 'ai' | 'agent' }))}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     disabled={creating || updating}
                   >
@@ -341,34 +355,39 @@ export default function IdentitiesView() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Avatar (URL)
-                </label>
-                <input
-                  type="url"
-                  value={formData.avatar}
-                  onChange={(e) => setFormData(prev => ({ ...prev, avatar: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  placeholder="https://exemplo.com/avatar.jpg"
-                  disabled={creating || updating}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Descrição
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  disabled={creating || updating}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Avatar (URL)
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.avatar}
+                    onChange={(e) => setFormData(prev => ({ ...prev, avatar: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    placeholder="https://exemplo.com/avatar.jpg"
+                    disabled={creating || updating}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Status *
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'active' | 'inactive' | 'suspended' }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    disabled={creating || updating}
+                  >
+                    <option value="active">Ativo</option>
+                    <option value="inactive">Inativo</option>
+                    <option value="suspended">Suspenso</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Metadata Fields */}
+              {/* Metadata Section */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -377,38 +396,43 @@ export default function IdentitiesView() {
                   <button
                     type="button"
                     onClick={addMetadataField}
+                    className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                     disabled={creating || updating}
-                    className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                   >
-                    + Adicionar campo
+                    + Adicionar Campo
                   </button>
                 </div>
                 
-                {Object.entries(formData.metadata).map(([key, value]) => (
-                  <div key={key} className="flex items-center space-x-2 mb-2">
-                    <input
-                      type="text"
-                      value={key}
-                      readOnly
-                      className="w-1/3 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                    <input
-                      type="text"
-                      value={value}
-                      onChange={(e) => updateMetadataField(key, e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                      disabled={creating || updating}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeMetadataField(key)}
-                      disabled={creating || updating}
-                      className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {Object.entries(formData.metadata).map(([key, value], index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Chave"
+                        value={key}
+                        onChange={(e) => updateMetadataField(key, e.target.value, value as string)}
+                        className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        disabled={creating || updating}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Valor"
+                        value={value as string}
+                        onChange={(e) => updateMetadataField(key, key, e.target.value)}
+                        className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        disabled={creating || updating}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeMetadataField(key)}
+                        className="px-2 py-1 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        disabled={creating || updating}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
               
               <div className="flex justify-end space-x-3 pt-4 border-t dark:border-gray-600">
@@ -447,92 +471,102 @@ export default function IdentitiesView() {
       ) : (
         <>
           {/* Identities Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {identities.map((identity) => (
-              <div
-                key={identity.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    {identity.avatar ? (
-                      <img
-                        src={identity.avatar}
-                        alt={identity.name}
-                        className="h-12 w-12 rounded-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                        }}
-                      />
-                    ) : null}
-                    <div className={`h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center ${identity.avatar ? 'hidden' : ''}`}>
-                      {getTypeIcon(identity.type)}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{identity.name}</h3>
-                      <div className="flex items-center space-x-2">
-                        {getTypeIcon(identity.type)}
-                        <span className="text-sm text-gray-600 dark:text-gray-400">{getTypeLabel(identity.type)}</span>
+          {identities.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {identities.map((identity) => {
+                const TypeIcon = getTypeIcon(identity.type);
+                return (
+                  <div key={identity.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0">
+                          {identity.avatar ? (
+                            <Image
+                              src={identity.avatar}
+                              alt={identity.name}
+                              width={48}
+                              height={48}
+                              className="w-12 h-12 rounded-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                          ) : null}
+                          <div className={`${identity.avatar ? 'hidden' : ''} w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center`}>
+                            <TypeIcon className="w-6 h-6 text-gray-400" />
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {identity.name}
+                          </h3>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(identity.type)}`}>
+                              <TypeIcon className="w-3 h-3 mr-1" />
+                              {getTypeLabel(identity.type)}
+                            </span>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(identity.status)}`}>
+                              {identity.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={() => handleEdit(identity)}
+                          disabled={updating}
+                          className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(identity)}
+                          disabled={deleting === identity.id}
+                          className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                        >
+                          {deleting === identity.id ? (
+                            <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEdit(identity)}
-                      disabled={updating}
-                      className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(identity)}
-                      disabled={deleting === identity.id}
-                      className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
-                    >
-                      {deleting === identity.id ? (
-                        <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                
-                {identity.description && (
-                  <p className="mt-3 text-gray-600 dark:text-gray-400 text-sm">{identity.description}</p>
-                )}
 
-                {identity.metadata && Object.keys(identity.metadata).length > 0 && (
-                  <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-xs">
-                    <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">Metadados:</div>
-                    {Object.entries(identity.metadata).slice(0, 3).map(([key, value]) => (
-                      <div key={key} className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">{key}:</span>
-                        <span className="text-gray-900 dark:text-white truncate ml-2">{String(value)}</span>
-                      </div>
-                    ))}
-                    {Object.keys(identity.metadata).length > 3 && (
-                      <div className="text-gray-500 dark:text-gray-400 mt-1">
-                        +{Object.keys(identity.metadata).length - 3} campos...
+                    {/* Metadata */}
+                    {Object.keys(identity.metadata).length > 0 && (
+                      <div className="border-t dark:border-gray-600 pt-3">
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Metadados:</h4>
+                        <div className="space-y-1">
+                          {Object.entries(identity.metadata).slice(0, 3).map(([key, value]) => (
+                            <div key={key} className="flex justify-between text-sm">
+                              <span className="text-gray-500 dark:text-gray-400">{key}:</span>
+                              <span className="text-gray-900 dark:text-white font-medium truncate ml-2">
+                                {String(value)}
+                              </span>
+                            </div>
+                          ))}
+                          {Object.keys(identity.metadata).length > 3 && (
+                            <div className="text-xs text-gray-400">
+                              +{Object.keys(identity.metadata).length - 3} mais...
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
-                  </div>
-                )}
-                
-                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span>Criado em {new Date(identity.createdAt).toLocaleDateString('pt-BR')}</span>
-                    <span>Atualizado em {new Date(identity.updatedAt).toLocaleDateString('pt-BR')}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
 
-          {/* Empty State */}
-          {identities.length === 0 && !loading && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                      Criado em {new Date(identity.createdAt).toLocaleDateString('pt-BR')}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* Empty State */
             <div className="text-center py-12">
               <Users className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
@@ -541,7 +575,7 @@ export default function IdentitiesView() {
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 {searchQuery || typeFilter !== 'all' 
                   ? 'Tente ajustar os filtros de busca.' 
-                  : 'Comece criando sua primeira identidade.'}
+                  : 'Comece criando a primeira identidade.'}
               </p>
               {!searchQuery && typeFilter === 'all' && (
                 <button

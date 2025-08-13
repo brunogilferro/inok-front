@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   Users, 
@@ -31,7 +30,6 @@ import ThemeToggle from '../chat/ThemeToggle';
 type ViewType = 'identities' | 'conversations' | 'agents' | 'databases' | 'memories' | 'flows' | 'users';
 
 export function AdminPanel() {
-  const { t } = useTranslation();
   const { user, logout, hasRole } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>('identities');
   const [sidebarOpen, setSidebarOpen] = useState(false);

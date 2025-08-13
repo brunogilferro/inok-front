@@ -7,7 +7,7 @@ import { AdminPanel } from '@/components/admin/AdminPanel';
 import { I18nProvider } from '@/components/I18nProvider';
 
 export default function AdminPage() {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { loading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {

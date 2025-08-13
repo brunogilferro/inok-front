@@ -10,7 +10,7 @@ import { MessageSquare, Settings } from 'lucide-react';
 
 export default function MainPage() {
   const [currentView, setCurrentView] = useState<'chat' | 'admin'>('chat');
-  const { user, loading, isAuthenticated } = useAuth();
+  const { loading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {

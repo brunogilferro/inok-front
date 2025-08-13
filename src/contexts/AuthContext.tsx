@@ -16,6 +16,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: {
     name: string;
@@ -24,64 +25,71 @@ interface AuthContextType {
     role?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
-  isAuthenticated: boolean;
-  hasRole: (role: string | string[]) => boolean;
   refreshUser: () => Promise<void>;
+  hasRole: (role: string | string[]) => boolean;
 }
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
 }
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Load user from localStorage and validate token
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const token = apiClient.getToken();
-        if (!token) {
-          setLoading(false);
-          return;
-        }
+  // Check if user is authenticated
+  const isAuthenticated = !!user;
 
-        // Validate token by fetching user profile
-        const response = await authAPI.getProfile();
-        if (response.success && response.data?.user) {
-          setUser(response.data.user);
-        } else {
-          // Invalid token, clear auth
-          apiClient.setToken(null);
-          setUser(null);
+  useEffect(() => {
+    // Check for existing token and validate it
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        const storedUser = localStorage.getItem('user');
+        
+        if (token && storedUser) {
+          // Set token in API client
+          apiClient.setToken(token);
+          
+          // Try to validate token by fetching user profile
+          try {
+            const response = await authAPI.getProfile();
+            if (response.success && response.data?.user) {
+              setUser(response.data.user as unknown as User);
+            } else {
+              throw new Error('Invalid user data');
+            }
+          } catch (error) {
+            // Token is invalid, clear it
+            console.error('Token validation failed:', error);
+            apiClient.setToken(null);
+            setUser(null);
+          }
         }
-      } catch (error: any) {
-        console.error('Auth initialization error:', error);
-        // Token might be expired or invalid
-        apiClient.setToken(null);
+      } catch (error) {
+        console.error('Auth check error:', error);
         setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
-    initAuth();
+    checkAuth();
   }, []);
 
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = async (email: string, password: string) => {
     try {
       setLoading(true);
       const response = await authAPI.login(email, password);
       
       if (response.success && response.data) {
-        setUser(response.data.user);
+        setUser(response.data.user as unknown as User);
         toast.success('Login realizado com sucesso!');
         
-        // Redirect to admin panel or intended route
+        // Check for intended route
         const intendedRoute = sessionStorage.getItem('intendedRoute');
         if (intendedRoute) {
           sessionStorage.removeItem('intendedRoute');
@@ -90,11 +98,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           router.push('/admin');
         }
       } else {
-        throw new Error(response.message || 'Erro no login');
+        throw new Error(response.message || 'Falha no login');
       }
-    } catch (error: any) {
-      console.error('Login error:', error);
-      toast.error(error.message || 'Erro no login');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro no login';
+      toast.error(errorMessage);
       throw error;
     } finally {
       setLoading(false);
@@ -106,77 +114,74 @@ export function AuthProvider({ children }: AuthProviderProps) {
     email: string;
     password: string;
     role?: string;
-  }): Promise<void> => {
+  }) => {
     try {
       setLoading(true);
-      const response = await authAPI.register({
-        ...userData,
-        role: userData.role || 'user',
-      });
+      const response = await authAPI.register(userData);
       
       if (response.success) {
         toast.success('Usuário registrado com sucesso! Faça login para continuar.');
         router.push('/login');
       } else {
-        throw new Error(response.message || 'Erro no registro');
+        throw new Error(response.message || 'Falha no registro');
       }
-    } catch (error: any) {
-      console.error('Register error:', error);
-      toast.error(error.message || 'Erro no registro');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro no registro';
+      toast.error(errorMessage);
       throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = async (): Promise<void> => {
+  const logout = async () => {
     try {
-      setLoading(true);
       await authAPI.logout();
-      toast.success('Logout realizado com sucesso');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Logout error:', error);
-      // Continue with logout even if API call fails
     } finally {
       setUser(null);
-      setLoading(false);
+      toast.success('Logout realizado com sucesso!');
       router.push('/login');
     }
   };
 
-  const refreshUser = async (): Promise<void> => {
+  const refreshUser = async () => {
     try {
       const response = await authAPI.getProfile();
       if (response.success && response.data?.user) {
-        setUser(response.data.user);
+        setUser(response.data.user as unknown as User);
       }
-    } catch (error: any) {
-      console.error('Refresh user error:', error);
-      // Token might be expired, trigger logout
-      await logout();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao atualizar perfil';
+      console.error('Refresh user error:', errorMessage);
+      // Don't show toast for refresh errors to avoid spamming
     }
   };
 
-  const hasRole = (roles: string | string[]): boolean => {
+  const hasRole = (role: string | string[]): boolean => {
     if (!user) return false;
     
-    const roleArray = Array.isArray(roles) ? roles : [roles];
-    return roleArray.includes(user.role);
-  };
-
-  const value: AuthContextType = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    isAuthenticated: !!user,
-    hasRole,
-    refreshUser,
+    if (Array.isArray(role)) {
+      return role.includes(user.role);
+    }
+    
+    return user.role === role;
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isAuthenticated,
+        login,
+        register,
+        logout,
+        refreshUser,
+        hasRole,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -189,5 +194,3 @@ export function useAuth() {
   }
   return context;
 }
-
-export default AuthContext;

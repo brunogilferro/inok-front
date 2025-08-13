@@ -1,14 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff, LogIn, User } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
-  const { t } = useTranslation();
   const { login, loading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -45,6 +43,7 @@ export default function LoginPage() {
       await login(formData.email, formData.password);
     } catch (error) {
       // Error handling is done in the AuthContext
+      console.error('Login error:', error);
     }
   };
 

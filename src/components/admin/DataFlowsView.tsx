@@ -1,225 +1,112 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Edit, Trash2, GitBranch, Play, Pause, AlertCircle, CheckCircle, Settings, Eye, Copy } from 'lucide-react';
-import { DataFlow, FlowNode } from '@/types/admin';
+import { Plus, Edit, Trash2, GitBranch, Play, Pause, AlertCircle, CheckCircle } from 'lucide-react';
+import { DataFlow } from '@/types/admin';
 
 export default function DataFlowsView() {
-  const [flows, setFlows] = useState<DataFlow[]>([
+  const [flows] = useState<DataFlow[]>([
     {
-      id: '1',
-      name: 'ETL Diário',
-      description: 'Processamento diário de dados de vendas e métricas',
-      type: 'etl',
+      id: 1,
+      name: 'Sync Customer Data',
+      description: 'Sincronização diária de dados de clientes do CRM',
+      source: 'CRM API',
+      destination: 'Data Warehouse',
+      transformations: [
+        { type: 'validation', config: { required_fields: ['email', 'name'] } },
+        { type: 'normalization', config: { format: 'standard' } }
+      ],
+      schedule: '0 2 * * *',
       status: 'active',
-      nodes: [
-        { id: '1', type: 'input', name: 'Database Source', parameters: { table: 'sales' }, connections: ['2'] },
-        { id: '2', type: 'process', name: 'Data Transform', parameters: { operations: ['clean', 'aggregate'] }, connections: ['3'] },
-        { id: '3', type: 'output', name: 'Data Warehouse', parameters: { target: 'analytics_db' }, connections: [] },
-      ],
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-15'),
+      lastRun: '2024-01-15T02:00:00Z',
+      nextRun: '2024-01-16T02:00:00Z',
+      createdAt: '2024-01-10T00:00:00Z',
+      updatedAt: '2024-01-15T02:00:00Z'
     },
     {
-      id: '2',
-      name: 'Streaming Analytics',
-      description: 'Processamento em tempo real de eventos do sistema',
-      type: 'streaming',
-      status: 'active',
-      nodes: [
-        { id: '1', type: 'input', name: 'Event Stream', parameters: { source: 'kafka' }, connections: ['2'] },
-        { id: '2', type: 'process', name: 'Real-time Process', parameters: { window: '5m' }, connections: ['3'] },
-        { id: '3', type: 'output', name: 'Dashboard', parameters: { format: 'websocket' }, connections: [] },
+      id: 2,
+      name: 'Process Analytics Events',
+      description: 'Processamento em tempo real de eventos de analytics',
+      source: 'Event Stream',
+      destination: 'Analytics DB',
+      transformations: [
+        { type: 'enrichment', config: { add_metadata: true } },
+        { type: 'filtering', config: { exclude_bots: true } }
       ],
-      createdAt: new Date('2024-01-05'),
-      updatedAt: new Date('2024-01-12'),
-    },
-    {
-      id: '3',
-      name: 'Batch Processing',
-      description: 'Processamento em lote de arquivos de log',
-      type: 'batch',
-      status: 'inactive',
-      nodes: [
-        { id: '1', type: 'input', name: 'File Input', parameters: { pattern: '*.log' }, connections: ['2'] },
-        { id: '2', type: 'process', name: 'Log Parser', parameters: { format: 'json' }, connections: ['3'] },
-        { id: '3', type: 'output', name: 'Elasticsearch', parameters: { index: 'logs' }, connections: [] },
-      ],
-      createdAt: new Date('2024-01-10'),
-      updatedAt: new Date('2024-01-13'),
-    },
+      schedule: 'real-time',
+      status: 'running',
+      lastRun: '2024-01-15T10:30:00Z',
+      nextRun: 'continuous',
+      createdAt: '2024-01-12T00:00:00Z',
+      updatedAt: '2024-01-15T10:30:00Z'
+    }
   ]);
 
+  const [loading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingFlow, setEditingFlow] = useState<DataFlow | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'etl' as const,
-    description: '',
-    nodes: [] as FlowNode[],
-  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (editingFlow) {
-      setFlows(prev => prev.map(flow => 
-        flow.id === editingFlow.id 
-          ? { ...flow, ...formData, updatedAt: new Date() }
-          : flow
-      ));
-    } else {
-      const newFlow: DataFlow = {
-        id: Date.now().toString(),
-        ...formData,
-        status: 'inactive',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      setFlows(prev => [...prev, newFlow]);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+      case 'inactive': return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
+      case 'running': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
+      case 'error': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
     }
-    
-    setShowForm(false);
-    setEditingFlow(null);
-    setFormData({ name: '', type: 'etl', description: '', nodes: [] });
-  };
-
-  const handleEdit = (flow: DataFlow) => {
-    setEditingFlow(flow);
-    setFormData({
-      name: flow.name,
-      type: flow.type,
-      description: flow.description,
-      nodes: flow.nodes,
-    });
-    setShowForm(true);
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este fluxo?')) {
-      setFlows(prev => prev.filter(flow => flow.id !== id));
-    }
-  };
-
-  const toggleStatus = (id: string) => {
-    setFlows(prev => prev.map(flow => 
-      flow.id === id 
-        ? { ...flow, status: flow.status === 'active' ? 'inactive' : 'active', updatedAt: new Date() }
-        : flow
-    ));
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'active':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'inactive':
-        return <Pause className="h-4 w-4 text-gray-600" />;
-      case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-600" />;
+      case 'active': return <CheckCircle className="w-4 h-4" />;
+      case 'inactive': return <Pause className="w-4 h-4" />;
+      case 'running': return <Play className="w-4 h-4" />;
+      case 'error': return <AlertCircle className="w-4 h-4" />;
+      default: return <AlertCircle className="w-4 h-4" />;
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'active':
-        return 'Ativo';
-      case 'inactive':
-        return 'Inativo';
-      case 'error':
-        return 'Erro';
-      default:
-        return status;
+      case 'active': return 'Ativo';
+      case 'inactive': return 'Inativo';
+      case 'running': return 'Executando';
+      case 'error': return 'Erro';
+      default: return status;
     }
   };
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'etl':
-        return 'ETL';
-      case 'streaming':
-        return 'Streaming';
-      case 'batch':
-        return 'Batch';
-      default:
-        return type;
+  const handleEdit = (flow: DataFlow) => {
+    setEditingFlow(flow);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (flow: DataFlow) => {
+    if (confirm(`Tem certeza que deseja excluir o fluxo "${flow.name}"?`)) {
+      // Implementation for delete
+      console.warn('Deleting flow:', flow.id);
     }
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'etl':
-        return 'bg-blue-100 text-blue-800';
-      case 'streaming':
-        return 'bg-green-100 text-green-800';
-      case 'batch':
-        return 'bg-orange-100 text-orange-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const handleExecute = async (flow: DataFlow) => {
+    // Implementation for execute
+    console.warn('Executing flow:', flow.id);
   };
 
-  const renderFlowDiagram = (nodes: FlowNode[]) => {
-    return (
-      <div className="flex items-center justify-center space-x-2 py-2">
-        {nodes.map((node, index) => (
-          <div key={node.id} className="flex items-center">
-            <div className={`px-2 py-1 rounded text-xs font-medium ${
-              node.type === 'input' ? 'bg-green-100 text-green-800' :
-              node.type === 'process' ? 'bg-blue-100 text-blue-800' :
-              'bg-purple-100 text-purple-800'
-            }`}>
-              {node.name}
-            </div>
-            {index < nodes.length - 1 && (
-              <div className="mx-2 text-gray-400">→</div>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const addNode = () => {
-    const newNode: FlowNode = {
-      id: Date.now().toString(),
-      type: 'process',
-      name: 'Novo Nó',
-      parameters: {},
-      connections: [],
-    };
-    setFormData(prev => ({
-      ...prev,
-      nodes: [...prev.nodes, newNode],
-    }));
-  };
-
-  const removeNode = (nodeId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      nodes: prev.nodes.filter(node => node.id !== nodeId),
-    }));
-  };
-
-  const updateNode = (nodeId: string, updates: Partial<FlowNode>) => {
-    setFormData(prev => ({
-      ...prev,
-      nodes: prev.nodes.map(node => 
-        node.id === nodeId ? { ...node, ...updates } : node
-      ),
-    }));
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingFlow(null);
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Fluxos de Dados</h1>
-          <p className="text-gray-600">Configure fluxos e integrações de dados</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Fluxos de Dados</h1>
+          <p className="text-gray-600 dark:text-gray-400">Configure e monitore fluxos de transformação de dados</p>
         </div>
+        
         <button
           onClick={() => setShowForm(true)}
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -229,219 +116,220 @@ export default function DataFlowsView() {
         </button>
       </div>
 
-      {/* Flows Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {flows.map((flow) => (
-          <div
-            key={flow.id}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <GitBranch className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{flow.name}</h3>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(flow.type)}`}>
-                      {getTypeLabel(flow.type)}
-                    </span>
-                    <div className="flex items-center space-x-2">
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Carregando fluxos...</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Flows Grid */}
+          {flows.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {flows.map((flow) => (
+                <div key={flow.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                          <GitBranch className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {flow.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {flow.description}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={() => handleExecute(flow)}
+                        className="p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 rounded-md hover:bg-green-50 dark:hover:bg-green-900/20"
+                        title="Executar fluxo"
+                      >
+                        <Play className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(flow)}
+                        className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(flow)}
+                        className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Status */}
+                  <div className="mb-3">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(flow.status)}`}>
                       {getStatusIcon(flow.status)}
-                      <span className="text-sm text-gray-600">{getStatusLabel(flow.status)}</span>
+                      <span className="ml-1">{getStatusLabel(flow.status)}</span>
+                    </span>
+                  </div>
+
+                  {/* Source -> Destination */}
+                  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600 dark:text-gray-400">{flow.source}</span>
+                      <GitBranch className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-600 dark:text-gray-400">{flow.destination}</span>
+                    </div>
+                  </div>
+
+                  {/* Transformations */}
+                  {flow.transformations.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Transformações:</h4>
+                      <div className="space-y-1">
+                        {flow.transformations.slice(0, 2).map((transform, _index) => (
+                          <div key={transform.type} className="flex justify-between text-sm">
+                            <span className="text-gray-500 dark:text-gray-400">{transform.type}</span>
+                          </div>
+                        ))}
+                        {flow.transformations.length > 2 && (
+                          <div className="text-xs text-gray-400">
+                            +{flow.transformations.length - 2} mais...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Schedule and Last Run */}
+                  <div className="border-t dark:border-gray-600 pt-3">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                      <div>Schedule: {flow.schedule}</div>
+                      <div>Última exec: {new Date(flow.lastRun).toLocaleDateString('pt-BR')}</div>
+                      <div>Próxima: {flow.nextRun === 'continuous' ? 'Contínuo' : new Date(flow.nextRun).toLocaleDateString('pt-BR')}</div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => toggleStatus(flow.id)}
-                  className={`p-2 rounded-md ${
-                    flow.status === 'active' 
-                      ? 'text-green-600 hover:bg-green-50' 
-                      : 'text-gray-400 hover:bg-gray-50'
-                  }`}
-                >
-                  {flow.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                </button>
-                <button
-                  onClick={() => handleEdit(flow)}
-                  className="p-2 text-gray-400 hover:text-blue-600 rounded-md hover:bg-blue-50"
-                >
-                  <Edit className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(flow.id)}
-                  className="p-2 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
+              ))}
             </div>
-            
-            {flow.description && (
-              <p className="mt-3 text-gray-600 text-sm">{flow.description}</p>
-            )}
-            
-            <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Fluxo</h4>
-              {renderFlowDiagram(flow.nodes)}
+          ) : (
+            /* Empty State */
+            <div className="text-center py-12">
+              <GitBranch className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum fluxo</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Comece criando o primeiro fluxo de dados.
+              </p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Fluxo
+              </button>
             </div>
-            
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Nós:</span>
-                <span className="font-medium text-gray-900">{flow.nodes.length}</span>
-              </div>
-            </div>
-            
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Criado em {flow.createdAt.toLocaleDateString('pt-BR')}</span>
-                <span>Atualizado em {flow.updatedAt.toLocaleDateString('pt-BR')}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          )}
+        </>
+      )}
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-screen overflow-y-auto">
+            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
               {editingFlow ? 'Editar Fluxo' : 'Novo Fluxo'}
             </h2>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nome
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nome *
                   </label>
                   <input
                     type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ex: ETL Diário"
+                    defaultValue={editingFlow?.name || ''}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     required
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tipo
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Status *
                   </label>
                   <select
-                    value={formData.type}
-                    onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    defaultValue={editingFlow?.status || 'inactive'}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   >
-                    <option value="etl">ETL</option>
-                    <option value="streaming">Streaming</option>
-                    <option value="batch">Batch</option>
+                    <option value="active">Ativo</option>
+                    <option value="inactive">Inativo</option>
+                    <option value="running">Executando</option>
+                    <option value="error">Erro</option>
                   </select>
                 </div>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Descrição
                 </label>
                 <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Descreva o propósito deste fluxo"
+                  defaultValue={editingFlow?.description || ''}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Origem *
+                  </label>
+                  <input
+                    type="text"
+                    defaultValue={editingFlow?.source || ''}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Destino *
+                  </label>
+                  <input
+                    type="text"
+                    defaultValue={editingFlow?.destination || ''}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Agendamento
+                </label>
+                <input
+                  type="text"
+                  defaultValue={editingFlow?.schedule || ''}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  placeholder="Ex: 0 2 * * * (cron format) ou real-time"
                 />
               </div>
               
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Nós do Fluxo
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addNode}
-                    className="inline-flex items-center px-2 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Adicionar Nó
-                  </button>
-                </div>
-                
-                <div className="space-y-3">
-                  {formData.nodes.map((node, index) => (
-                    <div key={node.id} className="border border-gray-200 rounded-lg p-3">
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Nome</label>
-                          <input
-                            type="text"
-                            value={node.name}
-                            onChange={(e) => updateNode(node.id, { name: e.target.value })}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
-                          <select
-                            value={node.type}
-                            onChange={(e) => updateNode(node.id, { type: e.target.value as any })}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          >
-                            <option value="input">Input</option>
-                            <option value="process">Process</option>
-                            <option value="output">Output</option>
-                          </select>
-                        </div>
-                        <div className="flex items-end">
-                          <button
-                            type="button"
-                            onClick={() => removeNode(node.id)}
-                            className="px-2 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700"
-                          >
-                            Remover
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Parâmetros (JSON)</label>
-                        <textarea
-                          value={JSON.stringify(node.parameters, null, 2)}
-                          onChange={(e) => {
-                            try {
-                              const parsed = JSON.parse(e.target.value);
-                              updateNode(node.id, { parameters: parsed });
-                            } catch (error) {
-                              // Ignore invalid JSON while typing
-                            }
-                          }}
-                          rows={2}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          placeholder='{"key": "value"}'
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex justify-end space-x-3 pt-4 border-t dark:border-gray-600">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingFlow(null);
-                    setFormData({ name: '', type: 'etl', description: '', nodes: [] });
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  onClick={resetForm}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
                 >
                   Cancelar
                 </button>
@@ -454,14 +342,6 @@ export default function DataFlowsView() {
               </div>
             </form>
           </div>
-        </div>
-      )}
-
-      {flows.length === 0 && (
-        <div className="text-center py-12">
-          <GitBranch className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum fluxo</h3>
-          <p className="mt-1 text-sm text-gray-500">Comece criando seu primeiro fluxo de dados.</p>
         </div>
       )}
     </div>

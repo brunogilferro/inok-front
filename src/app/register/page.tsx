@@ -1,14 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Eye, EyeOff, UserPlus, User } from 'lucide-react';
+import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RegisterPage() {
-  const { t } = useTranslation();
   const { register, loading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -76,6 +74,7 @@ export default function RegisterPage() {
       });
     } catch (error) {
       // Error handling is done in the AuthContext
+      console.error('Register error:', error);
     }
   };
 

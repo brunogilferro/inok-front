@@ -1,6 +1,6 @@
 import { toast } from 'sonner';
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
@@ -94,8 +94,9 @@ class ApiClient {
       });
 
       return this.handleResponse<T>(response);
-    } catch (error: any) {
-      toast.error(error.message || 'Erro na requisição');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro na requisição';
+      toast.error(errorMessage);
       throw error;
     }
   }
@@ -106,7 +107,7 @@ class ApiClient {
   }
 
   // POST request
-  async post<T>(endpoint: string, data?: any): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
@@ -114,7 +115,7 @@ class ApiClient {
   }
 
   // PUT request
-  async put<T>(endpoint: string, data?: any): Promise<T> {
+  async put<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
@@ -129,7 +130,7 @@ class ApiClient {
   // Auth methods
   async login(email: string, password: string) {
     const response = await this.post<ApiResponse<{
-      user: any;
+      user: Record<string, unknown>;
       token: string;
       expiresAt: string;
     }>>('/api/auth/login', { email, password });
@@ -162,7 +163,7 @@ class ApiClient {
   }
 
   async getProfile() {
-    return this.get<ApiResponse<{ user: any }>>('/api/auth/me');
+    return this.get<ApiResponse<{ user: Record<string, unknown> }>>('/api/auth/me');
   }
 
   // Health check
@@ -176,71 +177,71 @@ export const apiClient = new ApiClient();
 // Convenience methods for different resources
 export const authAPI = {
   login: (email: string, password: string) => apiClient.login(email, password),
-  register: (data: any) => apiClient.register(data),
+  register: (data: { name: string; email: string; password: string; role?: string; }) => apiClient.register(data),
   logout: () => apiClient.logout(),
   getProfile: () => apiClient.getProfile(),
 };
 
 export const identitiesAPI = {
-  getAll: (params?: any) => apiClient.get<ApiResponse>(`/api/identities${params ? `?${new URLSearchParams(params)}` : ''}`),
+  getAll: (params?: Record<string, string | number>) => apiClient.get<ApiResponse>(`/api/identities${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`),
   getById: (id: number) => apiClient.get<ApiResponse>(`/api/identities/${id}`),
-  create: (data: any) => apiClient.post<ApiResponse>('/api/identities', data),
-  update: (id: number, data: any) => apiClient.put<ApiResponse>(`/api/identities/${id}`, data),
+  create: (data: Record<string, unknown>) => apiClient.post<ApiResponse>('/api/identities', data),
+  update: (id: number, data: Record<string, unknown>) => apiClient.put<ApiResponse>(`/api/identities/${id}`, data),
   delete: (id: number) => apiClient.delete<ApiResponse>(`/api/identities/${id}`),
   getByType: (type: string) => apiClient.get<ApiResponse>(`/api/identities/type/${type}`),
 };
 
 export const conversationsAPI = {
-  getAll: (params?: any) => apiClient.get<ApiResponse>(`/api/conversations${params ? `?${new URLSearchParams(params)}` : ''}`),
+  getAll: (params?: Record<string, string | number>) => apiClient.get<ApiResponse>(`/api/conversations${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`),
   getById: (id: number) => apiClient.get<ApiResponse>(`/api/conversations/${id}`),
-  create: (data: any) => apiClient.post<ApiResponse>('/api/conversations', data),
-  update: (id: number, data: any) => apiClient.put<ApiResponse>(`/api/conversations/${id}`, data),
+  create: (data: Record<string, unknown>) => apiClient.post<ApiResponse>('/api/conversations', data),
+  update: (id: number, data: Record<string, unknown>) => apiClient.put<ApiResponse>(`/api/conversations/${id}`, data),
   delete: (id: number) => apiClient.delete<ApiResponse>(`/api/conversations/${id}`),
-  addTranscript: (id: number, data: any) => apiClient.post<ApiResponse>(`/api/conversations/${id}/transcript`, data),
-  addSummary: (id: number, data: any) => apiClient.post<ApiResponse>(`/api/conversations/${id}/summaries`, data),
-  addKnowledge: (id: number, data: any) => apiClient.post<ApiResponse>(`/api/conversations/${id}/knowledge`, data),
+  addTranscript: (id: number, data: Record<string, unknown>) => apiClient.post<ApiResponse>(`/api/conversations/${id}/transcript`, data),
+  addSummary: (id: number, data: Record<string, unknown>) => apiClient.post<ApiResponse>(`/api/conversations/${id}/summaries`, data),
+  addKnowledge: (id: number, data: Record<string, unknown>) => apiClient.post<ApiResponse>(`/api/conversations/${id}/knowledge`, data),
 };
 
 export const agentsAPI = {
-  getAll: (params?: any) => apiClient.get<ApiResponse>(`/api/agents${params ? `?${new URLSearchParams(params)}` : ''}`),
+  getAll: (params?: Record<string, string | number>) => apiClient.get<ApiResponse>(`/api/agents${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`),
   getById: (id: number) => apiClient.get<ApiResponse>(`/api/agents/${id}`),
-  create: (data: any) => apiClient.post<ApiResponse>('/api/agents', data),
-  update: (id: number, data: any) => apiClient.put<ApiResponse>(`/api/agents/${id}`, data),
+  create: (data: Record<string, unknown>) => apiClient.post<ApiResponse>('/api/agents', data),
+  update: (id: number, data: Record<string, unknown>) => apiClient.put<ApiResponse>(`/api/agents/${id}`, data),
   delete: (id: number) => apiClient.delete<ApiResponse>(`/api/agents/${id}`),
   test: (id: number) => apiClient.post<ApiResponse>(`/api/agents/${id}/test`),
 };
 
 export const databasesAPI = {
-  getAll: (params?: any) => apiClient.get<ApiResponse>(`/api/databases${params ? `?${new URLSearchParams(params)}` : ''}`),
+  getAll: (params?: Record<string, string | number>) => apiClient.get<ApiResponse>(`/api/databases${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`),
   getById: (id: number) => apiClient.get<ApiResponse>(`/api/databases/${id}`),
-  create: (data: any) => apiClient.post<ApiResponse>('/api/databases', data),
-  update: (id: number, data: any) => apiClient.put<ApiResponse>(`/api/databases/${id}`, data),
+  create: (data: Record<string, unknown>) => apiClient.post<ApiResponse>('/api/databases', data),
+  update: (id: number, data: Record<string, unknown>) => apiClient.put<ApiResponse>(`/api/databases/${id}`, data),
   delete: (id: number) => apiClient.delete<ApiResponse>(`/api/databases/${id}`),
   test: (id: number) => apiClient.post<ApiResponse>(`/api/databases/${id}/test`),
 };
 
 export const memoriesAPI = {
-  getAll: (params?: any) => apiClient.get<ApiResponse>(`/api/memories${params ? `?${new URLSearchParams(params)}` : ''}`),
+  getAll: (params?: Record<string, string | number>) => apiClient.get<ApiResponse>(`/api/memories${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`),
   getById: (id: number) => apiClient.get<ApiResponse>(`/api/memories/${id}`),
-  create: (data: any) => apiClient.post<ApiResponse>('/api/memories', data),
-  update: (id: number, data: any) => apiClient.put<ApiResponse>(`/api/memories/${id}`, data),
+  create: (data: Record<string, unknown>) => apiClient.post<ApiResponse>('/api/memories', data),
+  update: (id: number, data: Record<string, unknown>) => apiClient.put<ApiResponse>(`/api/memories/${id}`, data),
   delete: (id: number) => apiClient.delete<ApiResponse>(`/api/memories/${id}`),
-  import: (id: number, data: any) => apiClient.post<ApiResponse>(`/api/memories/${id}/import`, data),
+  import: (id: number, data: Record<string, unknown>) => apiClient.post<ApiResponse>(`/api/memories/${id}/import`, data),
 };
 
 export const flowsAPI = {
-  getAll: (params?: any) => apiClient.get<ApiResponse>(`/api/flows${params ? `?${new URLSearchParams(params)}` : ''}`),
+  getAll: (params?: Record<string, string | number>) => apiClient.get<ApiResponse>(`/api/flows${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`),
   getById: (id: number) => apiClient.get<ApiResponse>(`/api/flows/${id}`),
-  create: (data: any) => apiClient.post<ApiResponse>('/api/flows', data),
-  update: (id: number, data: any) => apiClient.put<ApiResponse>(`/api/flows/${id}`, data),
+  create: (data: Record<string, unknown>) => apiClient.post<ApiResponse>('/api/flows', data),
+  update: (id: number, data: Record<string, unknown>) => apiClient.put<ApiResponse>(`/api/flows/${id}`, data),
   delete: (id: number) => apiClient.delete<ApiResponse>(`/api/flows/${id}`),
   execute: (id: number) => apiClient.post<ApiResponse>(`/api/flows/${id}/execute`),
 };
 
 export const usersAPI = {
-  getAll: (params?: any) => apiClient.get<ApiResponse>(`/api/users${params ? `?${new URLSearchParams(params)}` : ''}`),
+  getAll: (params?: Record<string, string | number>) => apiClient.get<ApiResponse>(`/api/users${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`),
   getById: (id: number) => apiClient.get<ApiResponse>(`/api/users/${id}`),
-  create: (data: any) => apiClient.post<ApiResponse>('/api/users', data),
-  update: (id: number, data: any) => apiClient.put<ApiResponse>(`/api/users/${id}`, data),
+  create: (data: Record<string, unknown>) => apiClient.post<ApiResponse>('/api/users', data),
+  update: (id: number, data: Record<string, unknown>) => apiClient.put<ApiResponse>(`/api/users/${id}`, data),
   delete: (id: number) => apiClient.delete<ApiResponse>(`/api/users/${id}`),
 };

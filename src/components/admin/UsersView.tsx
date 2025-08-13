@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, User, Shield, RefreshCw, Search, Eye, EyeOff } from 'lucide-react';
 import { usersAPI } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import Image from 'next/image';
 
-interface User {
+interface UserData {
   id: number;
   name: string;
   email: string;
@@ -27,14 +28,14 @@ interface UserFormData {
 
 export default function UsersView() {
   const { hasRole } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
   
   const [showForm, setShowForm] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
@@ -53,31 +54,18 @@ export default function UsersView() {
     lastPage: 1,
   });
 
-  // Check if user has admin access
-  if (!hasRole('admin')) {
-    return (
-      <div className="text-center py-12">
-        <Shield className="mx-auto h-12 w-12 text-red-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Acesso Negado</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Apenas administradores podem acessar esta seção.
-        </p>
-      </div>
-    );
-  }
-
   // Load users
-  const loadUsers = async (page = 1, search = '') => {
+  const loadUsers = useCallback(async (page = 1, search = '') => {
     try {
       setLoading(true);
-      const params: any = { page, limit: pagination.perPage };
+      const params: Record<string, string | number> = { page, limit: pagination.perPage };
       
       if (search) params.name = search;
 
       const response = await usersAPI.getAll(params);
       
       if (response.success && response.data) {
-        setUsers(response.data);
+        setUsers(response.data as UserData[]);
         if (response.meta) {
           setPagination({
             currentPage: response.meta.currentPage,
@@ -87,26 +75,31 @@ export default function UsersView() {
           });
         }
       }
-    } catch (error: any) {
-      toast.error('Erro ao carregar usuários: ' + error.message);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      toast.error('Erro ao carregar usuários');
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.perPage]);
 
   // Initial load
   useEffect(() => {
-    loadUsers();
-  }, []);
+    if (hasRole('admin')) {
+      loadUsers();
+    }
+  }, [hasRole, loadUsers]);
 
   // Handle search
   useEffect(() => {
+    if (!hasRole('admin')) return;
+    
     const timeoutId = setTimeout(() => {
       loadUsers(1, searchQuery);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery]);
+  }, [searchQuery, hasRole, loadUsers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,7 +119,7 @@ export default function UsersView() {
       return;
     }
 
-    const payload: any = {
+    const payload: Record<string, string> = {
       name: formData.name.trim(),
       email: formData.email.trim(),
       role: formData.role,
@@ -162,7 +155,8 @@ export default function UsersView() {
       }
       
       resetForm();
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Error submitting user:', error);
       toast.error(editingUser ? 'Erro ao atualizar usuário' : 'Erro ao criar usuário');
     } finally {
       setCreating(false);
@@ -170,7 +164,7 @@ export default function UsersView() {
     }
   };
 
-  const handleEdit = (user: User) => {
+  const handleEdit = (user: UserData) => {
     setEditingUser(user);
     setFormData({
       name: user.name,
@@ -182,7 +176,7 @@ export default function UsersView() {
     setShowForm(true);
   };
 
-  const handleDelete = async (user: User) => {
+  const handleDelete = async (user: UserData) => {
     if (!confirm(`Tem certeza que deseja excluir o usuário "${user.name}"?`)) {
       return;
     }
@@ -200,8 +194,9 @@ export default function UsersView() {
           loadUsers(pagination.currentPage - 1, searchQuery);
         }
       }
-    } catch (error: any) {
-      toast.error('Erro ao excluir usuário: ' + error.message);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error('Erro ao excluir usuário');
     } finally {
       setDeleting(null);
     }
@@ -255,6 +250,19 @@ export default function UsersView() {
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
     }
   };
+
+  // Check if user has admin access - moved after hooks
+  if (!hasRole('admin')) {
+    return (
+      <div className="text-center py-12">
+        <Shield className="mx-auto h-12 w-12 text-red-400" />
+        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Acesso Negado</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Apenas administradores podem acessar esta seção.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -371,7 +379,7 @@ export default function UsersView() {
                 </label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as any }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'admin' | 'manager' | 'user' }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   disabled={creating || updating}
                 >
@@ -387,7 +395,7 @@ export default function UsersView() {
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'active' | 'inactive' | 'suspended' }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   disabled={creating || updating}
                 >
@@ -465,9 +473,11 @@ export default function UsersView() {
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
                             {user.avatar ? (
-                              <img
+                              <Image
                                 src={user.avatar}
                                 alt={user.name}
+                                width={40}
+                                height={40}
                                 className="h-10 w-10 rounded-full object-cover"
                               />
                             ) : (
