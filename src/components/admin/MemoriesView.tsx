@@ -91,7 +91,7 @@ export default function MemoriesView() {
     } finally {
       setLoading(false);
     }
-  }, [pagination.perPage, typeFilter, statusFilter]);
+  }, [pagination.perPage]);
 
   // Initial load
   useEffect(() => {
@@ -99,6 +99,12 @@ export default function MemoriesView() {
       loadMemories();
     }
   }, [hasRole, loadMemories]);
+
+  // Handle filter changes
+  useEffect(() => {
+    if (!hasRole('admin')) return;
+    loadMemories(1, searchQuery);
+  }, [typeFilter, statusFilter, hasRole, loadMemories, searchQuery]);
 
   // Handle search
   useEffect(() => {

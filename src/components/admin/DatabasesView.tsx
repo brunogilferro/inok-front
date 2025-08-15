@@ -35,6 +35,9 @@ export default function DatabasesView() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'postgresql' | 'mysql' | 'mongodb' | 'redis' | 'elasticsearch'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'connected' | 'disconnected' | 'error'>('all');
   
+  // Flag to prevent multiple initial loads
+  const [hasInitialized, setHasInitialized] = useState(false);
+  
   const [formData, setFormData] = useState<DatabaseFormData>({
     name: '',
     type: 'postgresql',
@@ -55,14 +58,14 @@ export default function DatabasesView() {
   });
 
   // Load databases from API
-  const loadDatabases = useCallback(async (page = 1, search = '') => {
+  const loadDatabases = useCallback(async (page = 1, search = '', type = 'all', status = 'all') => {
     try {
       setLoading(true);
       const params: Record<string, string | number> = { page, limit: pagination.perPage };
       
       if (search) params.name = search;
-      if (typeFilter !== 'all') params.type = typeFilter;
-      if (statusFilter !== 'all') params.status = statusFilter;
+      if (type !== 'all') params.type = type;
+      if (status !== 'all') params.status = status;
 
       const response = await databasesAPI.getAll(params);
       
@@ -83,25 +86,24 @@ export default function DatabasesView() {
     } finally {
       setLoading(false);
     }
-  }, [pagination.perPage, typeFilter, statusFilter]);
+  }, [pagination.perPage]);
 
-  // Initial load
-  useEffect(() => {
-    if (hasRole('admin')) {
-      loadDatabases();
-    }
-  }, [hasRole, loadDatabases]);
-
-  // Handle search
+  // Single useEffect to handle all changes
   useEffect(() => {
     if (!hasRole('admin')) return;
     
+    if (!hasInitialized) {
+      setHasInitialized(true);
+      loadDatabases(1, '', 'all', 'all');
+      return;
+    }
+    
     const timeoutId = setTimeout(() => {
-      loadDatabases(1, searchQuery);
+      loadDatabases(1, searchQuery, typeFilter, statusFilter);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, hasRole, loadDatabases]);
+  }, [hasRole, hasInitialized, searchQuery, typeFilter, statusFilter, loadDatabases]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

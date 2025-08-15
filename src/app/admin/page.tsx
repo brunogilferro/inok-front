@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminPanel } from '@/components/admin/AdminPanel';
-import { I18nProvider } from '@/components/I18nProvider';
+
 
 export default function AdminPage() {
   const { loading, isAuthenticated } = useAuth();
@@ -33,9 +33,5 @@ export default function AdminPage() {
     return null; // Will redirect in useEffect
   }
 
-  return (
-    <I18nProvider>
-      <AdminPanel />
-    </I18nProvider>
-  );
+  return <AdminPanel />;
 }

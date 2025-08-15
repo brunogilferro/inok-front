@@ -56,6 +56,9 @@ export default function ConversationsView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused' | 'archived' | 'deleted'>('all');
   
+  // Flag to prevent multiple initial loads
+  const [hasInitialized, setHasInitialized] = useState(false);
+  
   const [formData, setFormData] = useState<ConversationFormData>({
     title: '',
     context: '',
@@ -93,13 +96,13 @@ export default function ConversationsView() {
   });
 
   // Load conversations from API
-  const loadConversations = useCallback(async (page = 1, search = '') => {
+  const loadConversations = useCallback(async (page = 1, search = '', status = 'all') => {
     try {
       setLoading(true);
       const params: Record<string, string | number> = { page, limit: pagination.perPage };
       
       if (search) params.title = search;
-      if (statusFilter !== 'all') params.status = statusFilter;
+      if (status !== 'all') params.status = status;
 
       const response = await conversationsAPI.getAll(params);
       
@@ -120,25 +123,24 @@ export default function ConversationsView() {
     } finally {
       setLoading(false);
     }
-  }, [pagination.perPage, statusFilter]);
+  }, [pagination.perPage]);
 
-  // Initial load
-  useEffect(() => {
-    if (hasRole('admin')) {
-      loadConversations();
-    }
-  }, [hasRole, loadConversations]);
-
-  // Handle search
+  // Single useEffect to handle all changes
   useEffect(() => {
     if (!hasRole('admin')) return;
     
+    if (!hasInitialized) {
+      setHasInitialized(true);
+      loadConversations(1, '', 'all');
+      return;
+    }
+    
     const timeoutId = setTimeout(() => {
-      loadConversations(1, searchQuery);
+      loadConversations(1, searchQuery, statusFilter);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, hasRole, loadConversations]);
+  }, [hasRole, hasInitialized, searchQuery, statusFilter, loadConversations]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

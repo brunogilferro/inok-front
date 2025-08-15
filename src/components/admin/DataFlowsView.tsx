@@ -82,7 +82,7 @@ export default function DataFlowsView() {
     } finally {
       setLoading(false);
     }
-  }, [pagination.perPage, statusFilter]);
+  }, [pagination.perPage]);
 
   // Initial load
   useEffect(() => {
@@ -90,6 +90,12 @@ export default function DataFlowsView() {
       loadDataFlows();
     }
   }, [hasRole, loadDataFlows]);
+
+  // Handle filter changes
+  useEffect(() => {
+    if (!hasRole('admin')) return;
+    loadDataFlows(1, searchQuery);
+  }, [statusFilter, hasRole, loadDataFlows, searchQuery]);
 
   // Handle search
   useEffect(() => {

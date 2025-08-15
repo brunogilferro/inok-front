@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Edit, Trash2, User, Bot, Users, Search, RefreshCw } from 'lucide-react';
 import { identitiesAPI } from '@/lib/api-client';
 import { toast } from 'sonner';
@@ -37,6 +37,9 @@ export default function IdentitiesView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'human' | 'ai' | 'agent'>('all');
   
+  // Simple ref to prevent multiple loads
+  const hasLoaded = useRef(false);
+  
   const [formData, setFormData] = useState<IdentityFormData>({
     name: '',
     type: 'human',
@@ -53,10 +56,10 @@ export default function IdentitiesView() {
   });
 
   // Load identities from API
-  const loadIdentities = useCallback(async (page = 1, search = '', type = 'all') => {
+  const loadIdentities = useCallback(async (page = 1, search = '', type = 'all', limit = 20) => {
     try {
       setLoading(true);
-      const params: Record<string, string | number> = { page, limit: pagination.perPage };
+      const params: Record<string, string | number> = { page, limit };
       
       if (search) params.name = search;
       if (type && type !== 'all') params.type = type;
@@ -80,21 +83,15 @@ export default function IdentitiesView() {
     } finally {
       setLoading(false);
     }
-  }, [pagination.perPage]);
+  }, []);
 
-  // Initial load
+    // Simple useEffect - only runs once
   useEffect(() => {
-    loadIdentities();
+    if (!hasLoaded.current) {
+      hasLoaded.current = true;
+      loadIdentities(1, '', 'all');
+    }
   }, [loadIdentities]);
-
-  // Handle search and filter changes
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      loadIdentities(1, searchQuery, typeFilter);
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, typeFilter, loadIdentities]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
