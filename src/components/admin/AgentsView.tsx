@@ -47,6 +47,8 @@ export default function AgentsView() {
     lastPage: 1,
   });
 
+  const lastFetchSignatureRef = useRef<string>('');
+
   // Load agents from API
   const loadAgents = useCallback(async (page = 1, search = '', type = typeFilter, limit = 20) => {
     try {
@@ -55,6 +57,12 @@ export default function AgentsView() {
       
       if (search) params.name = search;
       if (type !== 'all') params.type = type;
+
+      const signature = JSON.stringify(params);
+      if (lastFetchSignatureRef.current === signature) {
+        return;
+      }
+      lastFetchSignatureRef.current = signature;
 
       const response = await agentsAPI.getAll(params);
       

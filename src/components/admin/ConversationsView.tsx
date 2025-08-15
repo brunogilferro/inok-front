@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, MessageSquare, Play, Pause, CheckCircle, AlertCircle, X, Edit, Trash2, Search, Users, Calendar, Clock } from 'lucide-react';
 import { Conversation } from '@/types/admin';
 import { conversationsAPI } from '@/lib/api-client';
@@ -95,6 +95,8 @@ export default function ConversationsView() {
     lastPage: 1,
   });
 
+  const lastFetchSignatureRef = useRef<string>('');
+
   // Load conversations from API
   const loadConversations = useCallback(async (page = 1, search = '', status = 'all') => {
     try {
@@ -103,6 +105,12 @@ export default function ConversationsView() {
       
       if (search) params.title = search;
       if (status !== 'all') params.status = status;
+
+      const signature = JSON.stringify(params);
+      if (lastFetchSignatureRef.current === signature) {
+        return;
+      }
+      lastFetchSignatureRef.current = signature;
 
       const response = await conversationsAPI.getAll(params);
       

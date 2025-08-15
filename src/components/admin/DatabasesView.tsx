@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Edit, Trash2, Database, Wifi, WifiOff, AlertCircle, Search, X, TestTube } from 'lucide-react';
 import { DatabaseConnection } from '@/types/admin';
 import { databasesAPI } from '@/lib/api-client';
@@ -37,6 +37,7 @@ export default function DatabasesView() {
   
   // Flag to prevent multiple initial loads
   const [hasInitialized, setHasInitialized] = useState(false);
+  const lastFetchSignatureRef = useRef<string>('');
   
   const [formData, setFormData] = useState<DatabaseFormData>({
     name: '',
@@ -66,6 +67,12 @@ export default function DatabasesView() {
       if (search) params.name = search;
       if (type !== 'all') params.type = type;
       if (status !== 'all') params.status = status;
+
+      const signature = JSON.stringify(params);
+      if (lastFetchSignatureRef.current === signature) {
+        return;
+      }
+      lastFetchSignatureRef.current = signature;
 
       const response = await databasesAPI.getAll(params);
       

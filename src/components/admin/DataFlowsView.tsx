@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Edit, Trash2, GitBranch, Play, Pause, AlertCircle, CheckCircle, Search, X, Clock, Calendar, Zap } from 'lucide-react';
 import { DataFlow } from '@/types/admin';
 import { flowsAPI } from '@/lib/api-client';
@@ -54,6 +54,8 @@ export default function DataFlowsView() {
     lastPage: 1,
   });
 
+  const lastFetchSignatureRef = useRef<string>('');
+
   // Load data flows from API
   const loadDataFlows = useCallback(async (page = 1, search = '') => {
     try {
@@ -62,6 +64,12 @@ export default function DataFlowsView() {
       
       if (search) params.name = search;
       if (statusFilter !== 'all') params.status = statusFilter;
+
+      const signature = JSON.stringify(params);
+      if (lastFetchSignatureRef.current === signature) {
+        return;
+      }
+      lastFetchSignatureRef.current = signature;
 
       const response = await flowsAPI.getAll(params);
       

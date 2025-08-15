@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Edit, Trash2, User, Shield, RefreshCw, Search, Eye, EyeOff } from 'lucide-react';
 import { usersAPI } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +33,8 @@ export default function UsersView() {
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const hasInitializedRef = useRef(false);
+  const lastFetchSignatureRef = useRef<string>('');
   
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
@@ -57,11 +59,17 @@ export default function UsersView() {
   // Load users
   const loadUsers = useCallback(async (page = 1, search = '') => {
     try {
-      setLoading(true);
       const params: Record<string, string | number> = { page, limit: pagination.perPage };
       
       if (search) params.name = search;
 
+      const signature = JSON.stringify(params);
+      if (lastFetchSignatureRef.current === signature) {
+        return;
+      }
+      lastFetchSignatureRef.current = signature;
+
+      setLoading(true);
       const response = await usersAPI.getAll(params);
       
       if (response.success && response.data) {
@@ -85,19 +93,19 @@ export default function UsersView() {
 
   // Initial load
   useEffect(() => {
-    if (hasRole('admin')) {
+    if (!hasRole('admin')) return;
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
       loadUsers();
     }
   }, [hasRole, loadUsers]);
 
   // Handle search
   useEffect(() => {
-    if (!hasRole('admin')) return;
-    
+    if (!hasRole('admin') || !hasInitializedRef.current) return;
     const timeoutId = setTimeout(() => {
       loadUsers(1, searchQuery);
     }, 300);
-
     return () => clearTimeout(timeoutId);
   }, [searchQuery, hasRole, loadUsers]);
 

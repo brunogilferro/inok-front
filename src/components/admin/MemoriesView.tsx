@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Edit, Trash2, Brain, Upload, Search, X, FileText, Database, Network } from 'lucide-react';
 import { Memory } from '@/types/admin';
 import { memoriesAPI } from '@/lib/api-client';
@@ -62,6 +62,8 @@ export default function MemoriesView() {
     lastPage: 1,
   });
 
+  const lastFetchSignatureRef = useRef<string>('');
+
   // Load memories from API
   const loadMemories = useCallback(async (page = 1, search = '') => {
     try {
@@ -71,6 +73,12 @@ export default function MemoriesView() {
       if (search) params.name = search;
       if (typeFilter !== 'all') params.type = typeFilter;
       if (statusFilter !== 'all') params.status = statusFilter;
+
+      const signature = JSON.stringify(params);
+      if (lastFetchSignatureRef.current === signature) {
+        return;
+      }
+      lastFetchSignatureRef.current = signature;
 
       const response = await memoriesAPI.getAll(params);
       

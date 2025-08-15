@@ -56,6 +56,8 @@ export default function IdentitiesView() {
   });
 
   // Load identities from API
+  const lastFetchSignatureRef = useRef<string>('');
+
   const loadIdentities = useCallback(async (page = 1, search = '', type = 'all', limit = 20) => {
     try {
       setLoading(true);
@@ -63,6 +65,12 @@ export default function IdentitiesView() {
       
       if (search) params.name = search;
       if (type && type !== 'all') params.type = type;
+
+      const signature = JSON.stringify(params);
+      if (lastFetchSignatureRef.current === signature) {
+        return;
+      }
+      lastFetchSignatureRef.current = signature;
 
       const response = await identitiesAPI.getAll(params);
       
